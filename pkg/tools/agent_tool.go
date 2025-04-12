@@ -32,7 +32,7 @@ type WrappableAgent interface {
 // This tool allows an agent to be called as a tool within a larger application.
 type AgentTool struct {
 	*LlmToolAdaptor
-	agent            WrappableAgent
+	agent             WrappableAgent
 	skipSummarization bool
 }
 

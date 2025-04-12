@@ -23,7 +23,7 @@ package tools
 func NewLongRunningFunctionTool(fn interface{}, config FunctionToolConfig) (*LlmToolAdaptor, error) {
 	// Force isLongRunning to be true
 	config.IsLongRunning = true
-	
+
 	// Create a function tool with the long-running flag set
 	return NewFunctionTool(fn, config)
 }

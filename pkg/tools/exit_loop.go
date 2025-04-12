@@ -24,7 +24,7 @@ var ExitLoopTool = NewTool(
 	"Exit the current loop. Call this function only when you are instructed to do so.",
 	ToolSchema{
 		Input: ParameterSchema{
-			Type: "object",
+			Type:       "object",
 			Properties: map[string]ParameterSchema{},
 		},
 		Output: map[string]ParameterSchema{
@@ -35,12 +35,12 @@ var ExitLoopTool = NewTool(
 		},
 	},
 	func(ctx context.Context, input map[string]interface{}) (map[string]interface{}, error) {
-			// In a real implementation, this would set a flag in the execution context
-			// to indicate that the loop should exit
-			// For now we just return success
-			return map[string]interface{}{
-				"success": true,
-				"message": "Loop exit signal sent",
-			}, nil
+		// In a real implementation, this would set a flag in the execution context
+		// to indicate that the loop should exit
+		// For now we just return success
+		return map[string]interface{}{
+			"success": true,
+			"message": "Loop exit signal sent",
+		}, nil
 	},
 )

@@ -23,8 +23,8 @@ import (
 // FunctionTool wraps a Go function as a tool that can be used by agents.
 type FunctionTool struct {
 	*BaseTool
-	function  interface{}
-	takesCtx  bool
+	function     interface{}
+	takesCtx     bool
 	takesToolCtx bool
 }
 
@@ -65,7 +65,7 @@ func NewFunctionTool(fn interface{}, config FunctionToolConfig) (*LlmToolAdaptor
 	// Check if function accepts context and/or ToolContext
 	takesCtx := false
 	takesToolCtx := false
-	
+
 	for i := 0; i < fnType.NumIn(); i++ {
 		paramType := fnType.In(i)
 		// Check for context.Context
@@ -90,8 +90,8 @@ func NewFunctionTool(fn interface{}, config FunctionToolConfig) (*LlmToolAdaptor
 
 	// Create the function tool
 	functionTool := &FunctionTool{
-		function:  fn,
-		takesCtx:  takesCtx,
+		function:     fn,
+		takesCtx:     takesCtx,
 		takesToolCtx: takesToolCtx,
 	}
 
@@ -105,7 +105,7 @@ func NewFunctionTool(fn interface{}, config FunctionToolConfig) (*LlmToolAdaptor
 		},
 		executeFn: functionTool.execute,
 	}
-	
+
 	functionTool.BaseTool = baseTool
 
 	// Create and return the tool adaptor
@@ -116,19 +116,19 @@ func NewFunctionTool(fn interface{}, config FunctionToolConfig) (*LlmToolAdaptor
 func (ft *FunctionTool) execute(ctx context.Context, input map[string]interface{}) (map[string]interface{}, error) {
 	fnValue := reflect.ValueOf(ft.function)
 	fnType := fnValue.Type()
-	
+
 	// Prepare arguments
 	args := make([]reflect.Value, 0, fnType.NumIn())
-	
+
 	// Handle special arguments (context and toolContext) first
 	if ft.takesCtx {
 		args = append(args, reflect.ValueOf(ctx))
 	}
-	
+
 	// The rest are from the input map based on parameter names
 	for i := len(args); i < fnType.NumIn(); i++ {
 		paramType := fnType.In(i)
-		
+
 		// Check if parameter is ToolContext
 		if paramType == reflect.TypeOf(&ToolContext{}) && ft.takesToolCtx {
 			// This would normally come from the execution context
@@ -136,13 +136,13 @@ func (ft *FunctionTool) execute(ctx context.Context, input map[string]interface{
 			args = append(args, reflect.ValueOf(&ToolContext{}))
 			continue
 		}
-		
+
 		// Get parameter name
 		paramName := fnType.In(i).Name()
 		if paramName == "" {
 			paramName = fmt.Sprintf("param%d", i)
 		}
-		
+
 		// Look for parameter in input
 		value, exists := input[paramName]
 		if !exists {
@@ -156,24 +156,24 @@ func (ft *FunctionTool) execute(ctx context.Context, input map[string]interface{
 			}
 			continue
 		}
-		
+
 		// Convert input value to parameter type
 		convertedValue, err := convertValueToType(value, paramType)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert parameter %s: %v", paramName, err)
 		}
-		
+
 		args = append(args, convertedValue)
 	}
-	
+
 	// Call the function
 	results := fnValue.Call(args)
-	
+
 	// Handle the results
 	if len(results) == 0 {
 		return map[string]interface{}{}, nil
 	}
-	
+
 	// Check for error (should be the last result)
 	if len(results) > 1 {
 		errVal := results[len(results)-1]
@@ -182,15 +182,15 @@ func (ft *FunctionTool) execute(ctx context.Context, input map[string]interface{
 		}
 		results = results[:len(results)-1] // Remove error result
 	}
-	
+
 	// Convert first result to map[string]interface{}
 	result := results[0].Interface()
-	
+
 	// If result is already a map, return it
 	if resultMap, ok := result.(map[string]interface{}); ok {
 		return resultMap, nil
 	}
-	
+
 	// Otherwise, wrap the result in a map
 	return map[string]interface{}{
 		"result": result,
@@ -208,20 +208,20 @@ func convertValueToType(value interface{}, targetType reflect.Type) (reflect.Val
 	if value == nil {
 		return reflect.Zero(targetType), nil
 	}
-	
+
 	// Get value's type
 	valueType := reflect.TypeOf(value)
-	
+
 	// If types are already compatible, use direct conversion
 	if valueType.AssignableTo(targetType) {
 		return reflect.ValueOf(value), nil
 	}
-	
+
 	// Handle basic type conversions
 	switch targetType.Kind() {
 	case reflect.String:
 		return reflect.ValueOf(fmt.Sprintf("%v", value)), nil
-		
+
 	case reflect.Bool:
 		switch v := value.(type) {
 		case bool:
@@ -234,7 +234,7 @@ func convertValueToType(value interface{}, targetType reflect.Type) (reflect.Val
 			}
 		}
 		return reflect.Value{}, fmt.Errorf("cannot convert %v to bool", value)
-		
+
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch v := value.(type) {
 		case int:
@@ -247,7 +247,7 @@ func convertValueToType(value interface{}, targetType reflect.Type) (reflect.Val
 			// Would need parsing, but skipping for simplicity
 		}
 		return reflect.Value{}, fmt.Errorf("cannot convert %v to int", value)
-		
+
 	case reflect.Float32, reflect.Float64:
 		switch v := value.(type) {
 		case float64:
@@ -256,10 +256,10 @@ func convertValueToType(value interface{}, targetType reflect.Type) (reflect.Val
 			return reflect.ValueOf(float64(v)).Convert(targetType), nil
 		}
 		return reflect.Value{}, fmt.Errorf("cannot convert %v to float", value)
-		
+
 	case reflect.Map, reflect.Slice:
 		// Would need more complex conversion, but skipping for simplicity
 	}
-	
+
 	return reflect.Value{}, fmt.Errorf("unsupported type conversion from %T to %v", value, targetType)
 }

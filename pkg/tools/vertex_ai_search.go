@@ -35,26 +35,26 @@ func NewVertexAISearchTool(dataStoreID, searchEngineID string) (*VertexAISearchT
 	if (dataStoreID == "" && searchEngineID == "") || (dataStoreID != "" && searchEngineID != "") {
 		return nil, fmt.Errorf("either dataStoreID or searchEngineID must be specified, but not both")
 	}
-	
+
 	// Create a dummy BaseTool since this is a built-in tool that doesn't need execution
 	dummyBaseTool := &BaseTool{
 		name:        "vertex_ai_search",
 		description: "Search using Vertex AI Search",
 		schema: ToolSchema{
-			Input: ParameterSchema{Type: "object"},
+			Input:  ParameterSchema{Type: "object"},
 			Output: map[string]ParameterSchema{},
 		},
 		executeFn: func(ctx context.Context, input map[string]interface{}) (map[string]interface{}, error) {
 			return nil, fmt.Errorf("this is a built-in tool handled by the LLM")
 		},
 	}
-	
+
 	tool := &VertexAISearchTool{
 		LlmToolAdaptor: NewLlmToolAdaptor(dummyBaseTool, false),
 		dataStoreID:    dataStoreID,
 		searchEngineID: searchEngineID,
 	}
-	
+
 	tool.SetProcessLlmRequestFunc(tool.processLlmRequest)
 	return tool, nil
 }
@@ -65,14 +65,14 @@ func (v *VertexAISearchTool) processLlmRequest(ctx context.Context, toolContext 
 	// This depends on implementation details of how the model name is stored/accessed
 	// Since we don't have access to a direct Model field, we'll need to infer it
 	// from other sources (e.g., system instructions, context, etc.)
-	
+
 	// For this implementation, we'll assume Gemini models are being used
 	// In a real implementation, we would need to get the model name from somewhere
-	
+
 	// Add the Vertex AI Search configuration to the tools list
 	vertexAISearchTool := &models.Tool{
-		Name:        "vertex_ai_search",
-		Description: "Search using Vertex AI Search",
+		Name:          "vertex_ai_search",
+		Description:   "Search using Vertex AI Search",
 		IsLongRunning: false,
 	}
 

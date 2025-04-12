@@ -17,11 +17,11 @@ package tools
 import (
 	"context"
 	"fmt"
-	
+
 	"github.com/nvcnvn/adk-golang/pkg/models"
 )
 
-// BuiltInCodeExecutionTool is a built-in code execution tool that is automatically 
+// BuiltInCodeExecutionTool is a built-in code execution tool that is automatically
 // invoked by Gemini 2 models. This tool operates internally within the model and
 // does not require or perform local code execution.
 type BuiltInCodeExecutionTool struct {
@@ -35,18 +35,18 @@ func NewBuiltInCodeExecutionTool() *BuiltInCodeExecutionTool {
 		name:        "code_execution",
 		description: "Executes code within the model safely",
 		schema: ToolSchema{
-			Input: ParameterSchema{Type: "object"},
+			Input:  ParameterSchema{Type: "object"},
 			Output: map[string]ParameterSchema{},
 		},
 		executeFn: func(ctx context.Context, input map[string]interface{}) (map[string]interface{}, error) {
 			return nil, fmt.Errorf("this is a built-in tool handled by the LLM")
 		},
 	}
-	
+
 	tool := &BuiltInCodeExecutionTool{
 		LlmToolAdaptor: NewLlmToolAdaptor(dummyBaseTool, false),
 	}
-	
+
 	tool.SetProcessLlmRequestFunc(tool.processLlmRequest)
 	return tool
 }
@@ -57,20 +57,20 @@ func (b *BuiltInCodeExecutionTool) processLlmRequest(ctx context.Context, toolCo
 	// Since we don't have direct access to a model field in LlmRequest,
 	// we'll add the code execution tool regardless of model
 	// In a real implementation, we would need to get the model name from somewhere
-	
+
 	// Add the code execution tool to the tools list
 	codeExecutionTool := &models.Tool{
-		Name:        "code_execution",
-		Description: "Executes code within the model safely",
+		Name:          "code_execution",
+		Description:   "Executes code within the model safely",
 		IsLongRunning: false,
 	}
 
 	llmRequest.Tools = append(llmRequest.Tools, codeExecutionTool)
-	
+
 	if llmRequest.ToolsDict == nil {
 		llmRequest.ToolsDict = make(map[string]*models.Tool)
 	}
-	
+
 	llmRequest.ToolsDict["code_execution"] = codeExecutionTool
 
 	return nil

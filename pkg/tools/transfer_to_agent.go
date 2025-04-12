@@ -49,13 +49,13 @@ var TransferToAgentTool = NewTool(
 			}, nil
 		}
 
-			// Set transfer info to context
-			// In a real implementation, this would use proper context values
-			// that are read by the agent system later
-			// For now we just return the agent name so it can be handled elsewhere
-			return map[string]interface{}{
-				"success": true,
-				"target_agent": agentName,
-			}, nil
+		// Set transfer info to context
+		// In a real implementation, this would use proper context values
+		// that are read by the agent system later
+		// For now we just return the agent name so it can be handled elsewhere
+		return map[string]interface{}{
+			"success":      true,
+			"target_agent": agentName,
+		}, nil
 	},
 )
