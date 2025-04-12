@@ -26,7 +26,7 @@ import (
 type MemoryResult struct {
 	// SessionID is the session ID associated with the memory
 	SessionID string `json:"sessionId"`
-	
+
 	// Events is a list of events in the session
 	Events []*events.Event `json:"events"`
 }

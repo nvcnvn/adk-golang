@@ -16,20 +16,21 @@
 package sessions
 
 import (
-	"github.com/google/uuid"
-	"github.com/nvcnvn/adk-golang/pkg/events"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/nvcnvn/adk-golang/pkg/events"
 )
 
 // Session represents a conversation session.
 type Session struct {
 	// AppName is the name of the application
 	AppName string `json:"appName"`
-	
+
 	// UserID is the ID of the user
 	UserID string `json:"userId"`
-	
+
 	// ID is a unique identifier for this session
 	ID string `json:"id"`
 
@@ -38,10 +39,10 @@ type Session struct {
 
 	// State contains session state data
 	State map[string]interface{} `json:"state"`
-	
+
 	// CreateTime is when the session was created
 	CreateTime time.Time `json:"createTime"`
-	
+
 	// UpdateTime is when the session was last updated
 	UpdateTime time.Time `json:"updateTime"`
 
@@ -66,7 +67,7 @@ func NewSession(appName, userID string) *Session {
 func (s *Session) AddEvent(event *events.Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.Events = append(s.Events, event)
 	s.UpdateTime = time.Now()
 }
@@ -75,13 +76,13 @@ func (s *Session) AddEvent(event *events.Event) {
 func (s *Session) GetEvent(id string) *events.Event {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	for _, event := range s.Events {
 		if event.ID == id {
 			return event
 		}
 	}
-	
+
 	return nil
 }
 
@@ -89,7 +90,7 @@ func (s *Session) GetEvent(id string) *events.Event {
 func (s *Session) GetState(key string) (interface{}, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	value, exists := s.State[key]
 	return value, exists
 }
@@ -98,7 +99,7 @@ func (s *Session) GetState(key string) (interface{}, bool) {
 func (s *Session) SetState(key string, value interface{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.State[key] = value
 	s.UpdateTime = time.Now()
 }
@@ -107,7 +108,7 @@ func (s *Session) SetState(key string, value interface{}) {
 func (s *Session) GetAllEvents() []*events.Event {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	events := make([]*events.Event, len(s.Events))
 	copy(events, s.Events)
 	return events

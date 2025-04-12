@@ -28,7 +28,7 @@ import (
 type InMemoryMemoryService struct {
 	// sessionEvents maps app_name/user_id/session_id to a list of events
 	sessionEvents map[string][]*events.Event
-	mu           sync.RWMutex
+	mu            sync.RWMutex
 }
 
 // NewInMemoryMemoryService creates a new InMemoryMemoryService.
@@ -44,7 +44,7 @@ func (s *InMemoryMemoryService) AddSessionToMemory(ctx context.Context, session 
 	defer s.mu.Unlock()
 
 	key := formatSessionKey(session.AppName, session.UserID, session.ID)
-	
+
 	// Filter out events with no content
 	var eventsWithContent []*events.Event
 	for _, event := range session.Events {
@@ -52,7 +52,7 @@ func (s *InMemoryMemoryService) AddSessionToMemory(ctx context.Context, session 
 			eventsWithContent = append(eventsWithContent, event)
 		}
 	}
-	
+
 	s.sessionEvents[key] = eventsWithContent
 	return nil
 }
@@ -68,19 +68,19 @@ func (s *InMemoryMemoryService) SearchMemory(ctx context.Context, appName, userI
 	}
 
 	prefix := formatSessionKeyPrefix(appName, userID)
-	
+
 	for key, sessionEvents := range s.sessionEvents {
 		// Filter sessions by app_name and user_id
 		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
-		
+
 		var matchedEvents []*events.Event
 		for _, event := range sessionEvents {
 			if event.Content == nil || len(event.Content.Parts) == 0 {
 				continue
 			}
-			
+
 			// Create a concatenated text from all parts
 			var text strings.Builder
 			for _, part := range event.Content.Parts {
@@ -91,13 +91,13 @@ func (s *InMemoryMemoryService) SearchMemory(ctx context.Context, appName, userI
 					text.WriteString(part.Text)
 				}
 			}
-			
+
 			// Check if any keyword is in the text
 			if containsAny(strings.ToLower(text.String()), keywords) {
 				matchedEvents = append(matchedEvents, event)
 			}
 		}
-		
+
 		if len(matchedEvents) > 0 {
 			sessionID := extractSessionID(key)
 			response.Memories = append(response.Memories, &MemoryResult{
@@ -106,7 +106,7 @@ func (s *InMemoryMemoryService) SearchMemory(ctx context.Context, appName, userI
 			})
 		}
 	}
-	
+
 	return response, nil
 }
 
