@@ -17,9 +17,64 @@ package telemetry
 
 import (
 	"context"
+	"log"
+	"os"
 	"sync"
 	"time"
 )
+
+// Logger is the default logger for the telemetry package.
+var Logger = log.New(os.Stderr, "[ADK] ", log.LstdFlags|log.Lshortfile)
+
+// LogLevel defines the level of logging.
+type LogLevel int
+
+const (
+	// LevelDebug represents debug level logging.
+	LevelDebug LogLevel = iota
+	// LevelInfo represents info level logging.
+	LevelInfo
+	// LevelWarning represents warning level logging.
+	LevelWarning
+	// LevelError represents error level logging.
+	LevelError
+)
+
+// CurrentLogLevel controls the current logging level.
+var CurrentLogLevel = LevelInfo
+
+// Debug logs a message at debug level.
+func Debug(format string, v ...interface{}) {
+	if CurrentLogLevel <= LevelDebug {
+		Logger.Printf("[DEBUG] "+format, v...)
+	}
+}
+
+// Info logs a message at info level.
+func Info(format string, v ...interface{}) {
+	if CurrentLogLevel <= LevelInfo {
+		Logger.Printf("[INFO] "+format, v...)
+	}
+}
+
+// Warning logs a message at warning level.
+func Warning(format string, v ...interface{}) {
+	if CurrentLogLevel <= LevelWarning {
+		Logger.Printf("[WARNING] "+format, v...)
+	}
+}
+
+// Error logs a message at error level.
+func Error(format string, v ...interface{}) {
+	if CurrentLogLevel <= LevelError {
+		Logger.Printf("[ERROR] "+format, v...)
+	}
+}
+
+// SetLogLevel sets the current logging level.
+func SetLogLevel(level LogLevel) {
+	CurrentLogLevel = level
+}
 
 // Span represents a unit of work or operation.
 type Span interface {
