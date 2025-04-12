@@ -32,7 +32,7 @@ var SupportTokenExchange = false
 type Session interface {
 	// Get retrieves a value from session state
 	Get(key string) (interface{}, bool)
-	
+
 	// Set stores a value in session state
 	Set(key string, value interface{})
 }
@@ -61,13 +61,13 @@ func NewAuthHandler(config AuthConfig) *AuthHandler {
 // ExchangeAuthToken generates an auth token from the authorization response
 func (h *AuthHandler) ExchangeAuthToken() (*AuthCredential, error) {
 	// Return the current token if token exchange isn't supported
-	if (!SupportTokenExchange) {
+	if !SupportTokenExchange {
 		return h.AuthConfig.ExchangedAuthCredential, nil
 	}
-	
+
 	var tokenEndpoint string
 	var scopes []string
-	
+
 	// Extract token endpoint and scopes from different auth schemes
 	switch scheme := h.AuthConfig.AuthScheme.(type) {
 	case *OpenIDConnectWithConfig:
@@ -80,13 +80,13 @@ func (h *AuthHandler) ExchangeAuthToken() (*AuthCredential, error) {
 		if scheme.Type != OAuth2Scheme || scheme.Flows == nil {
 			return h.AuthConfig.ExchangedAuthCredential, nil
 		}
-		
+
 		if scheme.Flows.AuthorizationCode == nil || scheme.Flows.AuthorizationCode.TokenURL == "" {
 			return h.AuthConfig.ExchangedAuthCredential, nil
 		}
-		
+
 		tokenEndpoint = scheme.Flows.AuthorizationCode.TokenURL
-		
+
 		if scheme.Flows.AuthorizationCode.Scopes != nil {
 			for scope := range scheme.Flows.AuthorizationCode.Scopes {
 				scopes = append(scopes, scope)
@@ -95,20 +95,20 @@ func (h *AuthHandler) ExchangeAuthToken() (*AuthCredential, error) {
 	default:
 		return h.AuthConfig.ExchangedAuthCredential, nil
 	}
-	
+
 	// Check if we have required OAuth2 fields
 	cred := h.AuthConfig.ExchangedAuthCredential
-	if cred == nil || 
-	   cred.OAuth2 == nil || 
-	   cred.OAuth2.ClientID == "" || 
-	   cred.OAuth2.ClientSecret == "" ||
-	   cred.OAuth2.Token != nil {
+	if cred == nil ||
+		cred.OAuth2 == nil ||
+		cred.OAuth2.ClientID == "" ||
+		cred.OAuth2.ClientSecret == "" ||
+		cred.OAuth2.Token != nil {
 		return h.AuthConfig.ExchangedAuthCredential, nil
 	}
-	
+
 	// In a real implementation, this would use an OAuth2 library to exchange tokens
 	// For now, this is a placeholder where token exchange would happen
-	
+
 	// This is where we would call the OAuth2 client to exchange authorization code for tokens
 	// Example pseudocode (we would use tokenEndpoint and scopes here):
 	// token, err := oauthClient.FetchToken(
@@ -119,8 +119,8 @@ func (h *AuthHandler) ExchangeAuthToken() (*AuthCredential, error) {
 	//     scopes: scopes,
 	// )
 	_ = tokenEndpoint // Mark as used in future implementation
-	_ = scopes       // Mark as used in future implementation
-	
+	_ = scopes        // Mark as used in future implementation
+
 	// Create updated credential with token
 	updatedCredential := &AuthCredential{
 		AuthType: OAuth2,
@@ -134,7 +134,7 @@ func (h *AuthHandler) ExchangeAuthToken() (*AuthCredential, error) {
 			},
 		},
 	}
-	
+
 	return updatedCredential, nil
 }
 
@@ -143,27 +143,27 @@ func (h *AuthHandler) ParseAndStoreAuthResponse(session Session) error {
 	if session == nil {
 		return errors.New("session is nil")
 	}
-	
+
 	credentialKey := h.GetCredentialKey()
-	
+
 	// Store the current exchanged credential
 	session.Set(credentialKey, h.AuthConfig.ExchangedAuthCredential)
-	
+
 	// Check if this is an OAuth2 or OpenID Connect scheme that needs token exchange
 	schemeType := GetAuthSchemeType(h.AuthConfig.AuthScheme)
 	if schemeType != OAuth2Scheme && schemeType != OpenIDConnectScheme {
 		return nil
 	}
-	
+
 	// Exchange token if needed
 	exchangedToken, err := h.ExchangeAuthToken()
 	if err != nil {
 		return err
 	}
-	
+
 	// Store the exchanged token
 	session.Set(credentialKey, exchangedToken)
-	
+
 	return nil
 }
 
@@ -172,19 +172,19 @@ func (h *AuthHandler) GetAuthResponse(session Session) (*AuthCredential, error) 
 	if session == nil {
 		return nil, errors.New("session is nil")
 	}
-	
+
 	credentialKey := h.GetCredentialKey()
-	
+
 	value, ok := session.Get(credentialKey)
 	if !ok {
 		return nil, nil
 	}
-	
+
 	credential, ok := value.(*AuthCredential)
 	if !ok {
 		return nil, fmt.Errorf("stored value is not an AuthCredential")
 	}
-	
+
 	return credential, nil
 }
 
@@ -195,24 +195,24 @@ func (h *AuthHandler) GenerateAuthRequest() (*AuthConfig, error) {
 	if schemeType != OAuth2Scheme && schemeType != OpenIDConnectScheme {
 		return h.AuthConfig.Copy(), nil
 	}
-	
+
 	// If auth_uri already exists in exchanged credential
 	if h.AuthConfig.ExchangedAuthCredential != nil &&
-	   h.AuthConfig.ExchangedAuthCredential.OAuth2 != nil &&
-	   h.AuthConfig.ExchangedAuthCredential.OAuth2.AuthURI != "" {
+		h.AuthConfig.ExchangedAuthCredential.OAuth2 != nil &&
+		h.AuthConfig.ExchangedAuthCredential.OAuth2.AuthURI != "" {
 		return h.AuthConfig.Copy(), nil
 	}
-	
+
 	// Check if raw_auth_credential exists
 	if h.AuthConfig.RawAuthCredential == nil {
 		return nil, fmt.Errorf("auth scheme %s requires auth_credential", schemeType)
 	}
-	
+
 	// Check if oauth2 exists in raw_auth_credential
 	if h.AuthConfig.RawAuthCredential.OAuth2 == nil {
 		return nil, fmt.Errorf("auth scheme %s requires oauth2 in auth_credential", schemeType)
 	}
-	
+
 	// auth_uri in raw credential
 	if h.AuthConfig.RawAuthCredential.OAuth2.AuthURI != "" {
 		// Copy raw credential to exchanged credential
@@ -220,43 +220,43 @@ func (h *AuthHandler) GenerateAuthRequest() (*AuthConfig, error) {
 		config.ExchangedAuthCredential = h.AuthConfig.RawAuthCredential.Copy()
 		return config, nil
 	}
-	
+
 	// Check for client_id and client_secret
 	oauth2Cred := h.AuthConfig.RawAuthCredential.OAuth2
 	if oauth2Cred.ClientID == "" || oauth2Cred.ClientSecret == "" {
 		return nil, fmt.Errorf("auth scheme %s requires both client_id and client_secret in auth_credential.oauth2", schemeType)
 	}
-	
+
 	// Generate new auth URI
 	exchangedCredential, err := h.GenerateAuthURI()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	config := h.AuthConfig.Copy()
 	config.ExchangedAuthCredential = exchangedCredential
-	
+
 	return config, nil
 }
 
 // GetCredentialKey generates a unique key for the given auth scheme and credential
 func (h *AuthHandler) GetCredentialKey() string {
 	var schemeName, credentialName string
-	
+
 	// Generate scheme name based on scheme type and hash of its JSON representation
 	if h.AuthConfig.AuthScheme != nil {
 		schemeType := GetAuthSchemeType(h.AuthConfig.AuthScheme)
 		schemeHash := hashString(fmt.Sprintf("%v", h.AuthConfig.AuthScheme))
 		schemeName = fmt.Sprintf("%s_%s", schemeType, schemeHash)
 	}
-	
+
 	// Generate credential name based on credential type and hash of its JSON representation
 	if h.AuthConfig.RawAuthCredential != nil {
 		credType := h.AuthConfig.RawAuthCredential.AuthType
 		credHash := hashString(fmt.Sprintf("%v", h.AuthConfig.RawAuthCredential))
 		credentialName = fmt.Sprintf("%s_%s", credType, credHash)
 	}
-	
+
 	return fmt.Sprintf("temp:adk_%s_%s", schemeName, credentialName)
 }
 
@@ -264,7 +264,7 @@ func (h *AuthHandler) GetCredentialKey() string {
 func (h *AuthHandler) GenerateAuthURI() (*AuthCredential, error) {
 	var authorizationEndpoint string
 	var scopes []string
-	
+
 	// Extract authorization endpoint and scopes from different auth schemes
 	switch scheme := h.AuthConfig.AuthScheme.(type) {
 	case *OpenIDConnectWithConfig:
@@ -274,7 +274,7 @@ func (h *AuthHandler) GenerateAuthURI() (*AuthCredential, error) {
 		if scheme.Flows == nil {
 			return nil, errors.New("auth scheme has no flows configured")
 		}
-		
+
 		if scheme.Flows.Implicit != nil && scheme.Flows.Implicit.AuthorizationURL != "" {
 			authorizationEndpoint = scheme.Flows.Implicit.AuthorizationURL
 			for scope := range scheme.Flows.Implicit.Scopes {
@@ -301,13 +301,13 @@ func (h *AuthHandler) GenerateAuthURI() (*AuthCredential, error) {
 	default:
 		return nil, errors.New("invalid auth scheme type")
 	}
-	
+
 	// Generate state for CSRF protection
 	state, err := generateRandomString(16)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Build auth URI
 	params := url.Values{}
 	params.Add("client_id", h.AuthConfig.RawAuthCredential.OAuth2.ClientID)
@@ -315,22 +315,22 @@ func (h *AuthHandler) GenerateAuthURI() (*AuthCredential, error) {
 	params.Add("state", state)
 	params.Add("access_type", "offline")
 	params.Add("prompt", "consent")
-	
+
 	if len(scopes) > 0 {
 		params.Add("scope", strings.Join(scopes, " "))
 	}
-	
+
 	if h.AuthConfig.RawAuthCredential.OAuth2.RedirectURI != "" {
 		params.Add("redirect_uri", h.AuthConfig.RawAuthCredential.OAuth2.RedirectURI)
 	}
-	
+
 	authURI := authorizationEndpoint
 	if strings.Contains(authorizationEndpoint, "?") {
 		authURI += "&" + params.Encode()
 	} else {
 		authURI += "?" + params.Encode()
 	}
-	
+
 	// Create exchanged credential
 	exchangedAuthCredential := h.AuthConfig.RawAuthCredential.Copy()
 	if exchangedAuthCredential.OAuth2 == nil {
@@ -338,7 +338,7 @@ func (h *AuthHandler) GenerateAuthURI() (*AuthCredential, error) {
 	}
 	exchangedAuthCredential.OAuth2.AuthURI = authURI
 	exchangedAuthCredential.OAuth2.State = state
-	
+
 	return exchangedAuthCredential, nil
 }
 

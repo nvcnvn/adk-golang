@@ -58,7 +58,7 @@ type HttpAuth struct {
 	// header as defined in RFC7235. The values used SHOULD be registered in the
 	// IANA Authentication Scheme registry.
 	// Examples: 'basic', 'bearer'
-	Scheme      string         `json:"scheme"`
+	Scheme      string          `json:"scheme"`
 	Credentials HttpCredentials `json:"credentials"`
 }
 
@@ -98,13 +98,13 @@ type ServiceAccountAuth struct {
 
 // AuthCredential represents an authentication credential.
 type AuthCredential struct {
-	AuthType     AuthCredentialType      `json:"auth_type"`
-	ResourceRef  string                  `json:"resource_ref,omitempty"`
-	APIKey       string                  `json:"api_key,omitempty"`
-	HTTP         *HttpAuth               `json:"http,omitempty"`
-	ServiceAcct  *ServiceAccountAuth     `json:"service_account,omitempty"`
-	OAuth2       *OAuth2Auth             `json:"oauth2,omitempty"`
-	ExtraFields  map[string]interface{}  `json:"-"`
+	AuthType    AuthCredentialType     `json:"auth_type"`
+	ResourceRef string                 `json:"resource_ref,omitempty"`
+	APIKey      string                 `json:"api_key,omitempty"`
+	HTTP        *HttpAuth              `json:"http,omitempty"`
+	ServiceAcct *ServiceAccountAuth    `json:"service_account,omitempty"`
+	OAuth2      *OAuth2Auth            `json:"oauth2,omitempty"`
+	ExtraFields map[string]interface{} `json:"-"`
 }
 
 // UnmarshalJSON provides custom JSON unmarshaling with support for extra fields
@@ -209,7 +209,7 @@ func (a *AuthCredential) Copy() *AuthCredential {
 			AuthResponseURI: a.OAuth2.AuthResponseURI,
 			AuthCode:        a.OAuth2.AuthCode,
 		}
-		
+
 		if a.OAuth2.Token != nil {
 			tokenCopy := make(map[string]interface{})
 			for k, v := range a.OAuth2.Token {
@@ -217,7 +217,7 @@ func (a *AuthCredential) Copy() *AuthCredential {
 			}
 			oauth2Copy.Token = tokenCopy
 		}
-		
+
 		result.OAuth2 = oauth2Copy
 	}
 
@@ -226,10 +226,10 @@ func (a *AuthCredential) Copy() *AuthCredential {
 			UseDefaultCredential: a.ServiceAcct.UseDefaultCredential,
 			Scopes:               make([]string, len(a.ServiceAcct.Scopes)),
 		}
-		
+
 		// Copy slices
 		copy(serviceCopy.Scopes, a.ServiceAcct.Scopes)
-		
+
 		// Copy service account credential if it exists
 		if a.ServiceAcct.ServiceAccountCredential != nil {
 			serviceCopy.ServiceAccountCredential = &ServiceAccountCredential{
@@ -246,7 +246,7 @@ func (a *AuthCredential) Copy() *AuthCredential {
 				UniverseDomain:          a.ServiceAcct.ServiceAccountCredential.UniverseDomain,
 			}
 		}
-		
+
 		result.ServiceAcct = serviceCopy
 	}
 

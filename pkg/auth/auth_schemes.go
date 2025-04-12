@@ -24,13 +24,13 @@ type AuthSchemeType string
 const (
 	// APIKeyScheme - API Key scheme
 	APIKeyScheme AuthSchemeType = "apiKey"
-	
+
 	// HTTPScheme - HTTP Auth scheme
 	HTTPScheme AuthSchemeType = "http"
-	
+
 	// OAuth2Scheme - OAuth2 scheme
 	OAuth2Scheme AuthSchemeType = "oauth2"
-	
+
 	// OpenIDConnectScheme - OpenID Connect scheme
 	OpenIDConnectScheme AuthSchemeType = "openIdConnect"
 )
@@ -41,13 +41,13 @@ type OAuthGrantType string
 const (
 	// ClientCredentialsGrant - Client Credentials grant type
 	ClientCredentialsGrant OAuthGrantType = "client_credentials"
-	
+
 	// AuthorizationCodeGrant - Authorization Code grant type
 	AuthorizationCodeGrant OAuthGrantType = "authorization_code"
-	
+
 	// ImplicitGrant - Implicit grant type
 	ImplicitGrant OAuthGrantType = "implicit"
-	
+
 	// PasswordGrant - Password grant type
 	PasswordGrant OAuthGrantType = "password"
 )
@@ -70,14 +70,14 @@ type OAuthFlows struct {
 
 // SecurityScheme represents a security scheme as defined in OpenAPI 3.0
 type SecurityScheme struct {
-	Type             AuthSchemeType `json:"type"`
-	Description      string         `json:"description,omitempty"`
-	Name             string         `json:"name,omitempty"`             // for apiKey type
-	In               string         `json:"in,omitempty"`               // for apiKey type
-	Scheme           string         `json:"scheme,omitempty"`           // for http type
-	BearerFormat     string         `json:"bearerFormat,omitempty"`     // for http type with bearer scheme
-	Flows            *OAuthFlows    `json:"flows,omitempty"`            // for oauth2 type
-	OpenIDConnectURL string         `json:"openIdConnectUrl,omitempty"` // for openIdConnect type
+	Type             AuthSchemeType         `json:"type"`
+	Description      string                 `json:"description,omitempty"`
+	Name             string                 `json:"name,omitempty"`             // for apiKey type
+	In               string                 `json:"in,omitempty"`               // for apiKey type
+	Scheme           string                 `json:"scheme,omitempty"`           // for http type
+	BearerFormat     string                 `json:"bearerFormat,omitempty"`     // for http type with bearer scheme
+	Flows            *OAuthFlows            `json:"flows,omitempty"`            // for oauth2 type
+	OpenIDConnectURL string                 `json:"openIdConnectUrl,omitempty"` // for openIdConnect type
 	ExtraFields      map[string]interface{} `json:"-"`
 }
 
@@ -157,7 +157,7 @@ func (s *SecurityScheme) Copy() *SecurityScheme {
 	if s == nil {
 		return nil
 	}
-	
+
 	copy := &SecurityScheme{
 		Type:             s.Type,
 		Description:      s.Description,
@@ -167,18 +167,18 @@ func (s *SecurityScheme) Copy() *SecurityScheme {
 		BearerFormat:     s.BearerFormat,
 		OpenIDConnectURL: s.OpenIDConnectURL,
 	}
-	
+
 	// Deep copy flows if they exist
 	if s.Flows != nil {
 		copy.Flows = &OAuthFlows{}
-		
+
 		if s.Flows.Implicit != nil {
 			copy.Flows.Implicit = &OAuthFlow{
 				AuthorizationURL: s.Flows.Implicit.AuthorizationURL,
 				TokenURL:         s.Flows.Implicit.TokenURL,
 				RefreshURL:       s.Flows.Implicit.RefreshURL,
 			}
-			
+
 			if s.Flows.Implicit.Scopes != nil {
 				copy.Flows.Implicit.Scopes = make(map[string]string)
 				for k, v := range s.Flows.Implicit.Scopes {
@@ -186,14 +186,14 @@ func (s *SecurityScheme) Copy() *SecurityScheme {
 				}
 			}
 		}
-		
+
 		if s.Flows.Password != nil {
 			copy.Flows.Password = &OAuthFlow{
 				AuthorizationURL: s.Flows.Password.AuthorizationURL,
 				TokenURL:         s.Flows.Password.TokenURL,
 				RefreshURL:       s.Flows.Password.RefreshURL,
 			}
-			
+
 			if s.Flows.Password.Scopes != nil {
 				copy.Flows.Password.Scopes = make(map[string]string)
 				for k, v := range s.Flows.Password.Scopes {
@@ -201,14 +201,14 @@ func (s *SecurityScheme) Copy() *SecurityScheme {
 				}
 			}
 		}
-		
+
 		if s.Flows.ClientCredentials != nil {
 			copy.Flows.ClientCredentials = &OAuthFlow{
 				AuthorizationURL: s.Flows.ClientCredentials.AuthorizationURL,
 				TokenURL:         s.Flows.ClientCredentials.TokenURL,
 				RefreshURL:       s.Flows.ClientCredentials.RefreshURL,
 			}
-			
+
 			if s.Flows.ClientCredentials.Scopes != nil {
 				copy.Flows.ClientCredentials.Scopes = make(map[string]string)
 				for k, v := range s.Flows.ClientCredentials.Scopes {
@@ -216,14 +216,14 @@ func (s *SecurityScheme) Copy() *SecurityScheme {
 				}
 			}
 		}
-		
+
 		if s.Flows.AuthorizationCode != nil {
 			copy.Flows.AuthorizationCode = &OAuthFlow{
 				AuthorizationURL: s.Flows.AuthorizationCode.AuthorizationURL,
 				TokenURL:         s.Flows.AuthorizationCode.TokenURL,
 				RefreshURL:       s.Flows.AuthorizationCode.RefreshURL,
 			}
-			
+
 			if s.Flows.AuthorizationCode.Scopes != nil {
 				copy.Flows.AuthorizationCode.Scopes = make(map[string]string)
 				for k, v := range s.Flows.AuthorizationCode.Scopes {
@@ -232,7 +232,7 @@ func (s *SecurityScheme) Copy() *SecurityScheme {
 			}
 		}
 	}
-	
+
 	// Copy extra fields map
 	if len(s.ExtraFields) > 0 {
 		copy.ExtraFields = make(map[string]interface{})
@@ -240,21 +240,21 @@ func (s *SecurityScheme) Copy() *SecurityScheme {
 			copy.ExtraFields[k] = v
 		}
 	}
-	
+
 	return copy
 }
 
 // OpenIDConnectWithConfig represents an extended OpenID Connect security scheme with configuration
 type OpenIDConnectWithConfig struct {
-	Type                           AuthSchemeType `json:"type"`
-	AuthorizationEndpoint         string         `json:"authorization_endpoint"`
-	TokenEndpoint                 string         `json:"token_endpoint"`
-	UserinfoEndpoint              string         `json:"userinfo_endpoint,omitempty"`
-	RevocationEndpoint            string         `json:"revocation_endpoint,omitempty"`
-	TokenEndpointAuthMethodsSupported []string      `json:"token_endpoint_auth_methods_supported,omitempty"`
-	GrantTypesSupported           []string      `json:"grant_types_supported,omitempty"`
-	Scopes                        []string      `json:"scopes,omitempty"`
-	ExtraFields                   map[string]interface{} `json:"-"`
+	Type                              AuthSchemeType         `json:"type"`
+	AuthorizationEndpoint             string                 `json:"authorization_endpoint"`
+	TokenEndpoint                     string                 `json:"token_endpoint"`
+	UserinfoEndpoint                  string                 `json:"userinfo_endpoint,omitempty"`
+	RevocationEndpoint                string                 `json:"revocation_endpoint,omitempty"`
+	TokenEndpointAuthMethodsSupported []string               `json:"token_endpoint_auth_methods_supported,omitempty"`
+	GrantTypesSupported               []string               `json:"grant_types_supported,omitempty"`
+	Scopes                            []string               `json:"scopes,omitempty"`
+	ExtraFields                       map[string]interface{} `json:"-"`
 }
 
 // UnmarshalJSON provides custom JSON unmarshaling with support for extra fields
@@ -335,11 +335,11 @@ func (o *OpenIDConnectWithConfig) Copy() *OpenIDConnectWithConfig {
 	}
 
 	copy := &OpenIDConnectWithConfig{
-		Type:                          o.Type,
-		AuthorizationEndpoint:         o.AuthorizationEndpoint,
-		TokenEndpoint:                 o.TokenEndpoint,
-		UserinfoEndpoint:              o.UserinfoEndpoint,
-		RevocationEndpoint:            o.RevocationEndpoint,
+		Type:                  o.Type,
+		AuthorizationEndpoint: o.AuthorizationEndpoint,
+		TokenEndpoint:         o.TokenEndpoint,
+		UserinfoEndpoint:      o.UserinfoEndpoint,
+		RevocationEndpoint:    o.RevocationEndpoint,
 	}
 
 	// Deep copy slices
@@ -408,7 +408,7 @@ func FromOAuthFlows(flows *OAuthFlows) OAuthGrantType {
 	if flows == nil {
 		return ""
 	}
-	
+
 	if flows.ClientCredentials != nil {
 		return ClientCredentialsGrant
 	}
