@@ -16,6 +16,7 @@ package models
 
 import (
 	"context"
+	"errors"
 )
 
 // LlmRequest represents a request to an LLM model
@@ -162,29 +163,85 @@ type Tool struct {
 	IsLongRunning bool `json:"isLongRunning,omitempty"`
 }
 
-// BaseLlm defines the interface for an LLM model
-type BaseLlm interface {
-	// GenerateContent generates content from the model based on the request
-	GenerateContent(ctx context.Context, request *LlmRequest, stream bool) (<-chan *LlmResponse, error)
+// LLM is the interface for language models using the enhanced request/response format.
+type LLM interface {
+	// SupportedModels returns a list of regex patterns for models supported by this implementation.
+	SupportedModels() []string
 
-	// Connect establishes a connection to the model for live interactions
-	Connect(request *LlmRequest) (BaseLlmConnection, error)
+	// GenerateContent generates content based on the provided request.
+	GenerateContent(ctx context.Context, request *LlmRequest) (*LlmResponse, error)
+
+	// GenerateContentStream generates streaming content based on the provided request.
+	GenerateContentStream(ctx context.Context, request *LlmRequest) (<-chan *LlmResponse, error)
+
+	// Connect establishes a real-time bidirectional connection with the model.
+	Connect(ctx context.Context, request *LlmRequest) (LlmConnection, error)
 }
 
-// BaseLlmConnection represents a live connection to an LLM
-type BaseLlmConnection interface {
-	// SendHistory sends conversation history to the model
-	SendHistory(content *Content) error
+// LlmConnection represents a real-time connection to a language model.
+type LlmConnection interface {
+	// Send sends a message to the model in an established connection.
+	Send(ctx context.Context, content Content) error
 
-	// SendContent sends content to the model during a conversation
-	SendContent(content *Content) error
+	// Receive waits for and returns the next response from the model.
+	Receive(ctx context.Context) (*LlmResponse, error)
 
-	// SendRealtime sends real-time data to the model
-	SendRealtime(data []byte) error
-
-	// Receive receives responses from the model
-	Receive() (<-chan *LlmResponse, error)
-
-	// Close closes the connection
+	// Close closes the connection with the model.
 	Close() error
+}
+
+// BaseLlm provides a common implementation of the LLM interface.
+type BaseLlm struct {
+	ModelName string
+}
+
+// NewBaseLlm creates a new BaseLlm instance.
+func NewBaseLlm(modelName string) *BaseLlm {
+	return &BaseLlm{
+		ModelName: modelName,
+	}
+}
+
+// SupportedModels returns an empty list of regex patterns.
+// Implementations should override this to provide their supported model patterns.
+func (b *BaseLlm) SupportedModels() []string {
+	return []string{}
+}
+
+// GenerateContent returns an error by default.
+// Implementations should override this to provide actual functionality.
+func (b *BaseLlm) GenerateContent(ctx context.Context, request *LlmRequest) (*LlmResponse, error) {
+	return nil, errors.New("generate content not implemented")
+}
+
+// GenerateContentStream returns an error by default.
+// Implementations should override this to provide actual functionality.
+func (b *BaseLlm) GenerateContentStream(ctx context.Context, request *LlmRequest) (<-chan *LlmResponse, error) {
+	return nil, errors.New("generate content stream not implemented")
+}
+
+// Connect returns an error by default.
+// Implementations should override this to provide actual functionality.
+func (b *BaseLlm) Connect(ctx context.Context, request *LlmRequest) (LlmConnection, error) {
+	return nil, errors.New("connect not implemented")
+}
+
+// BaseLlmConnection provides a common implementation of the LlmConnection interface.
+type BaseLlmConnection struct {
+	// Implementation-specific fields would go here
+}
+
+// Send returns an error by default.
+func (c *BaseLlmConnection) Send(ctx context.Context, content Content) error {
+	return errors.New("send not implemented")
+}
+
+// Receive returns an error by default.
+func (c *BaseLlmConnection) Receive(ctx context.Context) (*LlmResponse, error) {
+	return nil, errors.New("receive not implemented")
+}
+
+// Close returns an error by default.
+func (c *BaseLlmConnection) Close() error {
+	return errors.New("close not implemented")
 }

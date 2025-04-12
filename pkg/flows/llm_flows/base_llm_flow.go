@@ -210,14 +210,42 @@ func (f *BaseLlmFlow) callLLM(ctx context.Context, invocationContext *agents.Inv
 		// Determine if streaming is requested
 		streaming := invocationContext.RunConfig.StreamingMode == types.StreamingModeSSE
 
-		// Generate content
-		llmResponseCh, err := llm.GenerateContent(ctx, llmRequest, streaming)
-		if err != nil {
-			log.Printf("Error generating content: %v", err)
-			return
-		}
+		var err error
+		if streaming {
+			// If streaming, use the streaming generate function
+			var llmResponseCh <-chan *models.LlmResponse
+			llmResponseCh, err = llm.GenerateContentStream(ctx, llmRequest)
+			if err != nil {
+				log.Printf("Error generating streaming content: %v", err)
+				return
+			}
 
-		for llmResponse := range llmResponseCh {
+			// Forward each streamed response through our channel
+			for llmResponse := range llmResponseCh {
+				// Handle after model callback if exists
+				if llmAgent.AfterModelCallback != nil {
+					callbackCtx := &agents.CallbackContext{
+						InvocationContext: invocationContext,
+						EventActions:      modelResponseEvent.Actions,
+					}
+
+					alteredResponse := llmAgent.AfterModelCallback(callbackCtx, llmResponse)
+					if alteredResponse != nil {
+						llmResponse = alteredResponse
+					}
+				}
+
+				responseCh <- llmResponse
+			}
+		} else {
+			// If not streaming, use the non-streaming generate function
+			var llmResponse *models.LlmResponse
+			llmResponse, err = llm.GenerateContent(ctx, llmRequest)
+			if err != nil {
+				log.Printf("Error generating content: %v", err)
+				return
+			}
+
 			// Handle after model callback if exists
 			if llmAgent.AfterModelCallback != nil {
 				callbackCtx := &agents.CallbackContext{
@@ -231,6 +259,7 @@ func (f *BaseLlmFlow) callLLM(ctx context.Context, invocationContext *agents.Inv
 				}
 			}
 
+			// Send the single response through our channel
 			responseCh <- llmResponse
 		}
 	}()
