@@ -16,6 +16,7 @@
 package sessions
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -38,7 +39,10 @@ type Session struct {
 	Events []*events.Event `json:"events"`
 
 	// State contains session state data
-	State map[string]interface{} `json:"state"`
+	State *State `json:"-"` // Not directly serialized
+
+	// StateMap is the serializable representation of State
+	StateMap map[string]interface{} `json:"state"`
 
 	// CreateTime is when the session was created
 	CreateTime time.Time `json:"createTime"`
@@ -50,14 +54,26 @@ type Session struct {
 }
 
 // NewSession creates a new session with a unique ID.
-func NewSession(appName, userID string) *Session {
+func NewSession(appName, userID string, initialState map[string]interface{}, sessionID string) *Session {
 	now := time.Now()
+
+	if sessionID == "" {
+		sessionID = uuid.New().String()
+	}
+
+	if initialState == nil {
+		initialState = make(map[string]interface{})
+	}
+
+	state := NewState(initialState, make(map[string]interface{}))
+
 	return &Session{
 		AppName:    appName,
 		UserID:     userID,
-		ID:         uuid.New().String(),
+		ID:         sessionID,
 		Events:     []*events.Event{},
-		State:      make(map[string]interface{}),
+		State:      state,
+		StateMap:   initialState,
 		CreateTime: now,
 		UpdateTime: now,
 	}
@@ -67,6 +83,10 @@ func NewSession(appName, userID string) *Session {
 func (s *Session) AddEvent(event *events.Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if !event.Partial {
+		s.updateSessionState(event)
+	}
 
 	s.Events = append(s.Events, event)
 	s.UpdateTime = time.Now()
@@ -88,20 +108,16 @@ func (s *Session) GetEvent(id string) *events.Event {
 
 // GetState gets a value from the session state.
 func (s *Session) GetState(key string) (interface{}, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	value, exists := s.State[key]
-	return value, exists
+	return s.State.Get(key)
 }
 
 // SetState sets a value in the session state.
 func (s *Session) SetState(key string, value interface{}) {
+	s.State.Set(key, value)
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.State[key] = value
+	s.StateMap = s.State.ToMap()
 	s.UpdateTime = time.Now()
+	s.mu.Unlock()
 }
 
 // GetAllEvents returns all events in the session.
@@ -112,4 +128,24 @@ func (s *Session) GetAllEvents() []*events.Event {
 	events := make([]*events.Event, len(s.Events))
 	copy(events, s.Events)
 	return events
+}
+
+// updateSessionState updates the session state based on an event's state delta
+func (s *Session) updateSessionState(event *events.Event) {
+	if event.Actions == nil || len(event.Actions.StateDelta) == 0 {
+		return
+	}
+
+	// Filter out temporary state values
+	stateDelta := make(map[string]interface{})
+	for key, value := range event.Actions.StateDelta {
+		if !strings.HasPrefix(key, TempPrefix) {
+			stateDelta[key] = value
+		}
+	}
+
+	if len(stateDelta) > 0 {
+		s.State.Update(stateDelta)
+		s.StateMap = s.State.ToMap()
+	}
 }
