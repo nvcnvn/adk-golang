@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/nvcnvn/adk-golang/pkg/events"
 	"github.com/nvcnvn/adk-golang/pkg/models"
 	"github.com/nvcnvn/adk-golang/pkg/telemetry"
 	"github.com/nvcnvn/adk-golang/pkg/tools"
@@ -31,6 +32,96 @@ type BeforeAgentCallback func(ctx context.Context, message string) (string, bool
 
 // AfterAgentCallback is a function that's called after an agent processes a message
 type AfterAgentCallback func(ctx context.Context, response string) string
+
+// BaseAgent defines the interface for all agents
+type BaseAgent interface {
+	// Name returns the name of the agent
+	Name() string
+
+	// Run executes the agent with the given invocation context
+	Run(ctx context.Context, invocationContext *InvocationContext) (<-chan *events.Event, error)
+
+	// RunLive executes the agent in live mode with the given invocation context
+	RunLive(ctx context.Context, invocationContext *InvocationContext) (<-chan *events.Event, error)
+
+	// RootAgent returns the root agent in the agent tree
+	RootAgent() BaseAgent
+
+	// FindAgent finds an agent by name in the agent tree
+	FindAgent(name string) BaseAgent
+}
+
+// LlmAgent is a specialized agent that uses an LLM model
+type LlmAgent struct {
+	// name is the name of the agent
+	name string
+
+	// SystemInstructions contain system instructions for the LLM
+	SystemInstructions string
+
+	// CanonicalModel is the LLM model used by this agent
+	CanonicalModel models.BaseLlm
+
+	// CanonicalTools are the tools available to this agent
+	CanonicalTools []tools.Tool
+
+	// BeforeModelCallback is called before the model is invoked
+	BeforeModelCallback func(callbackContext *CallbackContext, llmRequest *models.LlmRequest) *models.LlmResponse
+
+	// AfterModelCallback is called after the model responds
+	AfterModelCallback func(callbackContext *CallbackContext, llmResponse *models.LlmResponse) *models.LlmResponse
+
+	// parentAgent is the parent of this agent
+	parentAgent BaseAgent
+}
+
+// NewLlmAgent creates a new LLM-based agent
+func NewLlmAgent(name string, model models.BaseLlm) *LlmAgent {
+	return &LlmAgent{
+		name:           name,
+		CanonicalModel: model,
+		CanonicalTools: make([]tools.Tool, 0),
+	}
+}
+
+// Name returns the name of the agent
+func (a *LlmAgent) Name() string {
+	return a.name
+}
+
+// Run executes the agent with the given invocation context
+func (a *LlmAgent) Run(ctx context.Context, invocationContext *InvocationContext) (<-chan *events.Event, error) {
+	// This would be implemented based on the flows
+	// For now, return an empty channel
+	eventCh := make(chan *events.Event)
+	close(eventCh)
+	return eventCh, nil
+}
+
+// RunLive executes the agent in live mode with the given invocation context
+func (a *LlmAgent) RunLive(ctx context.Context, invocationContext *InvocationContext) (<-chan *events.Event, error) {
+	// This would be implemented based on the flows
+	// For now, return an empty channel
+	eventCh := make(chan *events.Event)
+	close(eventCh)
+	return eventCh, nil
+}
+
+// RootAgent returns the root agent in the agent tree
+func (a *LlmAgent) RootAgent() BaseAgent {
+	if a.parentAgent == nil {
+		return a
+	}
+	return a.parentAgent.RootAgent()
+}
+
+// FindAgent finds an agent by name in the agent tree
+func (a *LlmAgent) FindAgent(name string) BaseAgent {
+	if a.name == name {
+		return a
+	}
+	return nil
+}
 
 // Agent represents an AI agent that can process user inputs and generate responses.
 type Agent struct {
