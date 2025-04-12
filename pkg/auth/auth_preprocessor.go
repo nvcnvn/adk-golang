@@ -138,10 +138,12 @@ func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation I
 			}
 			
 			// Initialize auth handler with the config
-			// In a real implementation, we would properly parse the auth config
+			// In a real implementation, we would properly deserialize the auth config
 			// For now, we just simulate that part
-			authConfig := AuthConfig{
-				// In a real implementation, this would be properly deserialized
+			var authConfig AuthConfig
+			if authConfigData != nil {
+				// Use authConfigData to populate authConfig in a real implementation
+				_ = authConfigData // Mark as used in future implementation
 			}
 			
 			handler := NewAuthHandler(authConfig)
@@ -207,6 +209,7 @@ func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation I
 			
 			// In a real implementation, we would get the tools from the agent
 			// For now, we just simulate that part
+			_ = agent // Mark as used in future implementation
 			
 			for _, functionCall := range functionCalls {
 				if _, ok := toolsToResume[functionCall.ID()]; ok {

@@ -61,7 +61,7 @@ func NewAuthHandler(config AuthConfig) *AuthHandler {
 // ExchangeAuthToken generates an auth token from the authorization response
 func (h *AuthHandler) ExchangeAuthToken() (*AuthCredential, error) {
 	// Return the current token if token exchange isn't supported
-	if !SupportTokenExchange {
+	if (!SupportTokenExchange) {
 		return h.AuthConfig.ExchangedAuthCredential, nil
 	}
 	
@@ -110,13 +110,16 @@ func (h *AuthHandler) ExchangeAuthToken() (*AuthCredential, error) {
 	// For now, this is a placeholder where token exchange would happen
 	
 	// This is where we would call the OAuth2 client to exchange authorization code for tokens
-	// Example pseudocode:
+	// Example pseudocode (we would use tokenEndpoint and scopes here):
 	// token, err := oauthClient.FetchToken(
 	//     tokenEndpoint,
 	//     authorizationResponse: cred.OAuth2.AuthResponseURI,
 	//     code: cred.OAuth2.AuthCode,
 	//     grantType: string(AuthorizationCodeGrant),
+	//     scopes: scopes,
 	// )
+	_ = tokenEndpoint // Mark as used in future implementation
+	_ = scopes       // Mark as used in future implementation
 	
 	// Create updated credential with token
 	updatedCredential := &AuthCredential{

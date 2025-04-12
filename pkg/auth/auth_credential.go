@@ -41,7 +41,7 @@ const (
 
 	// ServiceAccount - Service Account credentials:
 	// https://cloud.google.com/iam/docs/service-account-creds
-	ServiceAccount AuthCredentialType = "serviceAccount"
+	ServiceAccountType AuthCredentialType = "serviceAccount"
 )
 
 // HttpCredentials represents the secret token value for HTTP authentication.
@@ -89,8 +89,8 @@ type ServiceAccountCredential struct {
 	UniverseDomain          string `json:"universe_domain"`
 }
 
-// ServiceAccount represents Google Service Account configuration.
-type ServiceAccount struct {
+// ServiceAccountAuth represents Google Service Account configuration.
+type ServiceAccountAuth struct {
 	ServiceAccountCredential *ServiceAccountCredential `json:"service_account_credential,omitempty"`
 	Scopes                   []string                  `json:"scopes"`
 	UseDefaultCredential     bool                      `json:"use_default_credential,omitempty"`
@@ -102,7 +102,7 @@ type AuthCredential struct {
 	ResourceRef  string                  `json:"resource_ref,omitempty"`
 	APIKey       string                  `json:"api_key,omitempty"`
 	HTTP         *HttpAuth               `json:"http,omitempty"`
-	ServiceAcct  *ServiceAccount         `json:"service_account,omitempty"`
+	ServiceAcct  *ServiceAccountAuth     `json:"service_account,omitempty"`
 	OAuth2       *OAuth2Auth             `json:"oauth2,omitempty"`
 	ExtraFields  map[string]interface{}  `json:"-"`
 }
@@ -182,14 +182,14 @@ func (a *AuthCredential) Copy() *AuthCredential {
 		return nil
 	}
 
-	copy := &AuthCredential{
+	result := &AuthCredential{
 		AuthType:    a.AuthType,
 		ResourceRef: a.ResourceRef,
 		APIKey:      a.APIKey,
 	}
 
 	if a.HTTP != nil {
-		copy.HTTP = &HttpAuth{
+		result.HTTP = &HttpAuth{
 			Scheme: a.HTTP.Scheme,
 			Credentials: HttpCredentials{
 				Username: a.HTTP.Credentials.Username,
@@ -218,11 +218,11 @@ func (a *AuthCredential) Copy() *AuthCredential {
 			oauth2Copy.Token = tokenCopy
 		}
 		
-		copy.OAuth2 = oauth2Copy
+		result.OAuth2 = oauth2Copy
 	}
 
 	if a.ServiceAcct != nil {
-		serviceCopy := &ServiceAccount{
+		serviceCopy := &ServiceAccountAuth{
 			UseDefaultCredential: a.ServiceAcct.UseDefaultCredential,
 			Scopes:               make([]string, len(a.ServiceAcct.Scopes)),
 		}
@@ -247,16 +247,16 @@ func (a *AuthCredential) Copy() *AuthCredential {
 			}
 		}
 		
-		copy.ServiceAcct = serviceCopy
+		result.ServiceAcct = serviceCopy
 	}
 
 	// Copy extra fields map
 	if len(a.ExtraFields) > 0 {
-		copy.ExtraFields = make(map[string]interface{})
+		result.ExtraFields = make(map[string]interface{})
 		for k, v := range a.ExtraFields {
-			copy.ExtraFields[k] = v
+			result.ExtraFields[k] = v
 		}
 	}
 
-	return copy
+	return result
 }
