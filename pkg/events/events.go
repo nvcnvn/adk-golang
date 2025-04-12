@@ -12,131 +12,152 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package events provides functionality for event handling.
+// Package events provides types and functionality for events in the Agent Development Kit.
 package events
 
 import (
-	"sync"
+	"math/rand"
 	"time"
 )
 
-// EventType defines the type of event.
-type EventType string
+// Content represents a message part in an event.
+type Content struct {
+	Role  string `json:"role"`
+	Parts []Part `json:"parts"`
+}
 
-// Standard event types.
-const (
-	// Agent events
-	AgentStarted         EventType = "agent.started"
-	AgentStopped         EventType = "agent.stopped"
-	AgentInputReceived   EventType = "agent.input.received"
-	AgentOutputGenerated EventType = "agent.output.generated"
+// Part represents a part of content in an event.
+type Part struct {
+	Text                string               `json:"text,omitempty"`
+	FunctionCall        *FunctionCall        `json:"function_call,omitempty"`
+	FunctionResponse    *FunctionResponse    `json:"function_response,omitempty"`
+	CodeExecutionResult *CodeExecutionResult `json:"code_execution_result,omitempty"`
+}
 
-	// Tool events
-	ToolCalled         EventType = "tool.called"
-	ToolResultReceived EventType = "tool.result.received"
-	ToolError          EventType = "tool.error"
+// FunctionCall represents a function call in an event.
+type FunctionCall struct {
+	Name string                 `json:"name"`
+	Args map[string]interface{} `json:"args"`
+	ID   string                 `json:"id,omitempty"`
+}
 
-	// Model events
-	ModelCalled           EventType = "model.called"
-	ModelResponseReceived EventType = "model.response.received"
-	ModelError            EventType = "model.error"
-)
+// FunctionResponse represents a response to a function call.
+type FunctionResponse struct {
+	Name     string      `json:"name"`
+	Response interface{} `json:"response"`
+	ID       string      `json:"id,omitempty"`
+	Status   string      `json:"status,omitempty"`
+}
 
-// Event represents an event in the system.
+// CodeExecutionResult represents the result of code execution.
+type CodeExecutionResult struct {
+	Output string `json:"output"`
+	Status string `json:"status"`
+}
+
+// Event represents an event in a conversation between agents and users.
+// It stores content of the conversation and actions taken by agents.
 type Event struct {
-	// Type is the type of the event.
-	Type EventType
+	ID           string        `json:"id"`
+	InvocationID string        `json:"invocation_id"`
+	Author       string        `json:"author"`
+	Actions      *EventActions `json:"actions,omitempty"`
+	Content      *Content      `json:"content,omitempty"`
+	Timestamp    float64       `json:"timestamp"`
 
-	// Timestamp is when the event occurred.
-	Timestamp time.Time
+	// LongRunningToolIDs is the set of IDs of long running function calls.
+	// Agent client will know from this field about which function call is long running.
+	// Only valid for function call events.
+	LongRunningToolIDs map[string]struct{} `json:"long_running_tool_ids,omitempty"`
 
-	// Payload is the data associated with the event.
-	Payload interface{}
+	// Branch is used to track the agent hierarchy path, e.g.: agent_1.agent_2.agent_3
+	// where agent_1 is the parent of agent_2, and agent_2 is the parent of agent_3.
+	// This is used when multiple sub-agents shouldn't see their peer agents' conversation history.
+	Branch string `json:"branch,omitempty"`
+
+	// Additional error fields
+	ErrorCode    string `json:"error_code,omitempty"`
+	ErrorMessage string `json:"error_message,omitempty"`
+
+	// Indicates whether the event is partial and more updates will follow
+	Partial bool `json:"partial,omitempty"`
+	// Indicates whether this event completes the turn
+	TurnComplete bool `json:"turn_complete,omitempty"`
+	// Indicates whether the processing was interrupted
+	Interrupted bool `json:"interrupted,omitempty"`
 }
 
-// Handler is a function that handles events.
-type Handler func(event Event)
-
-// EventBus manages event subscriptions and dispatches events.
-type EventBus struct {
-	subscribers map[EventType][]Handler
-	mu          sync.RWMutex
-}
-
-// NewEventBus creates a new EventBus.
-func NewEventBus() *EventBus {
-	return &EventBus{
-		subscribers: make(map[EventType][]Handler),
+// NewEvent creates a new event with default values.
+func NewEvent(author string) *Event {
+	now := time.Now()
+	return &Event{
+		ID:        GenerateID(),
+		Author:    author,
+		Timestamp: float64(now.UnixNano()) / 1e9,
+		Actions:   NewEventActions(),
 	}
 }
 
-// Subscribe registers a handler for the given event type.
-func (b *EventBus) Subscribe(eventType EventType, handler Handler) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.subscribers[eventType] = append(b.subscribers[eventType], handler)
-}
-
-// SubscribeAll registers a handler for all event types.
-func (b *EventBus) SubscribeAll(handler Handler) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.subscribers["*"] = append(b.subscribers["*"], handler)
-}
-
-// Publish dispatches an event to all subscribers.
-func (b *EventBus) Publish(eventType EventType, payload interface{}) {
-	event := Event{
-		Type:      eventType,
-		Timestamp: time.Now(),
-		Payload:   payload,
+// IsFinalResponse determines if this event is a final response from the agent.
+func (e *Event) IsFinalResponse() bool {
+	if e.Actions.SkipSummarization || len(e.LongRunningToolIDs) > 0 {
+		return true
 	}
 
-	b.mu.RLock()
-	defer b.mu.RUnlock()
+	return len(e.GetFunctionCalls()) == 0 &&
+		len(e.GetFunctionResponses()) == 0 &&
+		!e.Partial &&
+		!e.HasTrailingCodeExecutionResult()
+}
 
-	// Notify type-specific subscribers
-	if handlers, ok := b.subscribers[eventType]; ok {
-		for _, handler := range handlers {
-			go handler(event)
+// GetFunctionCalls returns all function calls in the event.
+func (e *Event) GetFunctionCalls() []*FunctionCall {
+	var calls []*FunctionCall
+	if e.Content != nil && len(e.Content.Parts) > 0 {
+		for _, part := range e.Content.Parts {
+			if part.FunctionCall != nil {
+				calls = append(calls, part.FunctionCall)
+			}
 		}
 	}
+	return calls
+}
 
-	// Notify subscribers to all events
-	if handlers, ok := b.subscribers["*"]; ok {
-		for _, handler := range handlers {
-			go handler(event)
+// GetFunctionResponses returns all function responses in the event.
+func (e *Event) GetFunctionResponses() []*FunctionResponse {
+	var responses []*FunctionResponse
+	if e.Content != nil && len(e.Content.Parts) > 0 {
+		for _, part := range e.Content.Parts {
+			if part.FunctionResponse != nil {
+				responses = append(responses, part.FunctionResponse)
+			}
 		}
 	}
+	return responses
 }
 
-// Default global event bus
-var (
-	defaultBus  *EventBus
-	defaultOnce sync.Once
-)
-
-// DefaultBus returns the default global event bus.
-func DefaultBus() *EventBus {
-	defaultOnce.Do(func() {
-		defaultBus = NewEventBus()
-	})
-	return defaultBus
+// HasTrailingCodeExecutionResult returns whether the event has a trailing code execution result.
+func (e *Event) HasTrailingCodeExecutionResult() bool {
+	if e.Content != nil && len(e.Content.Parts) > 0 {
+		lastPart := e.Content.Parts[len(e.Content.Parts)-1]
+		return lastPart.CodeExecutionResult != nil
+	}
+	return false
 }
 
-// Subscribe is a convenience function that subscribes to the default bus.
-func Subscribe(eventType EventType, handler Handler) {
-	DefaultBus().Subscribe(eventType, handler)
+// GenerateID generates a random ID for events.
+func GenerateID() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const length = 8
+
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(result)
 }
 
-// SubscribeAll is a convenience function that subscribes to all events on the default bus.
-func SubscribeAll(handler Handler) {
-	DefaultBus().SubscribeAll(handler)
-}
-
-// Publish is a convenience function that publishes to the default bus.
-func Publish(eventType EventType, payload interface{}) {
-	DefaultBus().Publish(eventType, payload)
+// Initialize the random seed
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
