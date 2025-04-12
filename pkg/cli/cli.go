@@ -24,10 +24,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/adk-golang/pkg/agents"
-	"github.com/google/adk-golang/pkg/runners"
-	"github.com/google/adk-golang/pkg/telemetry"
-	"github.com/google/adk-golang/pkg/version"
+	"github.com/nvcnvn/adk-golang/pkg/agents"
+	"github.com/nvcnvn/adk-golang/pkg/runners"
+	"github.com/nvcnvn/adk-golang/pkg/telemetry"
+	"github.com/nvcnvn/adk-golang/pkg/version"
 	"github.com/spf13/cobra"
 )
 

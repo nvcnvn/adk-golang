@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/google/adk-golang/pkg/agents"
-	"github.com/google/adk-golang/pkg/telemetry"
+	"github.com/nvcnvn/adk-golang/pkg/agents"
+	"github.com/nvcnvn/adk-golang/pkg/telemetry"
 )
 
 // Runner is an interface for running agents.

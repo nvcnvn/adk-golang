@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/adk-golang/pkg/events"
-	"github.com/google/adk-golang/pkg/telemetry"
+	"github.com/nvcnvn/adk-golang/pkg/events"
+	"github.com/nvcnvn/adk-golang/pkg/telemetry"
 )
 
 // VertexAICodeExecutor uses Vertex AI's code execution capabilities.

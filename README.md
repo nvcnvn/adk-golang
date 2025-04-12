@@ -36,10 +36,10 @@ The Agent Development Kit (ADK) is designed for developers seeking fine-grained 
 You can install the ADK CLI using Go:
 
 ```bash
-go install github.com/google/adk-golang/cmd/adk@latest
+go install github.com/nvcnvn/adk-golang/cmd/adk@latest
 ```
 
-Or download a pre-built binary from the [releases page](https://github.com/google/adk-golang/releases).
+Or download a pre-built binary from the [releases page](https://github.com/nvcnvn/adk-golang/releases).
 
 ## 🔑 Setup API Key
 
@@ -54,8 +54,8 @@ Create your first agent (`my_agent/agent.go`):
 package main
 
 import (
-	"github.com/google/adk-golang/pkg/agents"
-	"github.com/google/adk-golang/pkg/tools"
+	"github.com/nvcnvn/adk-golang/pkg/agents"
+	"github.com/nvcnvn/adk-golang/pkg/tools"
 )
 
 func main() {

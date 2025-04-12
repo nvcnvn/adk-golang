@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/adk-golang/pkg/cli"
+	"github.com/nvcnvn/adk-golang/pkg/cli"
 )
 
 func main() {

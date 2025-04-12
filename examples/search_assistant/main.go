@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/adk-golang/pkg/agents"
-	"github.com/google/adk-golang/pkg/tools"
+	"github.com/nvcnvn/adk-golang/pkg/agents"
+	"github.com/nvcnvn/adk-golang/pkg/tools"
 )
 
 func main() {

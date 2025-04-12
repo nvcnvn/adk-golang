@@ -24,8 +24,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/adk-golang/pkg/events"
-	"github.com/google/adk-golang/pkg/telemetry"
+	"github.com/nvcnvn/adk-golang/pkg/events"
+	"github.com/nvcnvn/adk-golang/pkg/telemetry"
 )
 
 // File represents a file with its name and content.

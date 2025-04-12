@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/adk-golang/pkg/models"
-	"github.com/google/adk-golang/pkg/telemetry"
-	"github.com/google/adk-golang/pkg/tools"
+	"github.com/nvcnvn/adk-golang/pkg/models"
+	"github.com/nvcnvn/adk-golang/pkg/telemetry"
+	"github.com/nvcnvn/adk-golang/pkg/tools"
 )
 
 // BeforeAgentCallback is a function that's called before an agent processes a message
