@@ -369,7 +369,7 @@ func (c *GoogleApiToOpenApiConverter) convertResources(resources map[string]inte
 func (c *GoogleApiToOpenApiConverter) convertMethods(methods map[string]interface{}, resourcePath string) {
 	paths := c.openApiSpec["paths"].(map[string]interface{})
 
-	for methodName, methodData := range methods {
+	for _, methodData := range methods {
 		if methodDataMap, ok := methodData.(map[string]interface{}); ok {
 			httpMethod := "get"
 			if m, ok := methodDataMap["httpMethod"].(string); ok {

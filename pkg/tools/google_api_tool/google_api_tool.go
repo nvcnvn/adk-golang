@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/nvcnvn/adk-golang/pkg/auth"
-	"github.com/nvcnvn/adk-golang/pkg/tools"
 	"github.com/nvcnvn/adk-golang/pkg/tools/openapi_tool/openapi_spec_parser"
 )
 
@@ -48,18 +47,13 @@ func (g *GoogleApiTool) Description() string {
 	return g.restApiTool.Description()
 }
 
-// Execute implements the ExecutableTool interface for GoogleApiTool
+// Execute handles tool execution for GoogleApiTool
+// This is a placeholder implementation since the underlying RestApiTool doesn't have an Execute method
+// In a real implementation, this would call the underlying REST API
 func (g *GoogleApiTool) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
-	// We need to delegate to the underlying RestApiTool with the updated auth credentials
-	// Since we can't directly update the RestApiTool's auth credential, we need to
-	// possibly create a new instance with our auth credential when Execute is called
-
-	// For now, simply try casting the Tool interface to an ExecutableTool
-	if executableTool, ok := interface{}(g.restApiTool).(tools.ExecutableTool); ok {
-		return executableTool.Execute(ctx, args)
-	}
-
-	return nil, fmt.Errorf("RestApiTool is not executable")
+	// TODO: Implement the actual API call logic here when RestApiTool.Execute is implemented
+	// For now, return an error indicating this isn't fully implemented
+	return nil, fmt.Errorf("GoogleApiTool.Execute not fully implemented yet. Need to add implementation for REST API calls")
 }
 
 // ConfigureAuth configures OAuth 2.0 authentication for the tool.

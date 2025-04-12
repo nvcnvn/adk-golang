@@ -109,7 +109,13 @@ func LoadToolSet(apiName, apiVersion string) (*GoogleApiToolSet, error) {
 	}
 
 	// Create OpenAPI toolset using the converter output
-	toolSet := openapi_spec_parser.NewOpenAPIToolset(spec, authScheme, nil)
+	toolSet := openapi_spec_parser.NewOpenAPIToolset(spec, authScheme, auth.AuthCredential{
+		AuthType: auth.OpenIDConnect,
+		OAuth2: &auth.OAuth2Auth{
+			ClientID:     "your-client-id",
+			ClientSecret: "your-client-secret",
+		},
+	})
 	toolsList := toolSet.GetTools()
 
 	// Create Google API tool set using the OpenAPI tools
