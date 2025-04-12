@@ -17,7 +17,6 @@ package code_executors
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -413,14 +412,6 @@ func (e *JavaScriptExecutor) collectOutputFiles() ([]File, error) {
 	}
 
 	return outputFiles, nil
-}
-
-// CodeExecutionUtils provides utility functions for code execution.
-type CodeExecutionUtils struct{}
-
-// GetEncodedFileContent returns the base64-encoded content of a file.
-func (u *CodeExecutionUtils) GetEncodedFileContent(data []byte) string {
-	return base64.StdEncoding.EncodeToString(data)
 }
 
 // NewCodeExecutor creates a new code executor for the given language.
