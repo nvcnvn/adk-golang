@@ -97,7 +97,7 @@ func NewApplicationIntegrationToolset(opts *ApplicationIntegrationToolsetOptions
 	}
 
 	// Validate either (integration and trigger) or (connection and (entityOperations or actions)) is provided
-	if (opts.Integration != "" && opts.Trigger == "") || 
+	if (opts.Integration != "" && opts.Trigger == "") ||
 		(opts.Integration == "" && opts.Trigger != "") {
 		return nil, fmt.Errorf("both integration and trigger must be provided together")
 	}
@@ -188,8 +188,8 @@ func (t *ApplicationIntegrationToolset) initializeTools() error {
 	// Create auth credentials
 	var authCred auth.AuthCredential
 	var authScheme auth.AuthScheme
-	
-	// Create Bearer auth scheme 
+
+	// Create Bearer auth scheme
 	authScheme = &auth.SecurityScheme{
 		Type:         auth.HTTPScheme,
 		Scheme:       "bearer",
@@ -202,12 +202,12 @@ func (t *ApplicationIntegrationToolset) initializeTools() error {
 		if err := json.Unmarshal([]byte(t.saJSONStr), &svcAcctCred); err != nil {
 			return fmt.Errorf("failed to parse service account JSON: %w", err)
 		}
-		
+
 		authCred = auth.AuthCredential{
 			AuthType: auth.ServiceAccountType,
 			ServiceAcct: &auth.ServiceAccountAuth{
 				ServiceAccountCredential: &svcAcctCred,
-				Scopes:                  []string{"https://www.googleapis.com/auth/cloud-platform"},
+				Scopes:                   []string{"https://www.googleapis.com/auth/cloud-platform"},
 			},
 		}
 	} else {
@@ -226,7 +226,7 @@ func (t *ApplicationIntegrationToolset) initializeTools() error {
 
 	// Get the tools from the toolset and convert them to the correct type
 	tools := toolset.GetTools()
-	
+
 	t.generatedTools = make([]*openapi_spec_parser.RestApiTool, 0, len(tools))
 	for _, tool := range tools {
 		if restTool, ok := tool.(*openapi_spec_parser.RestApiTool); ok {

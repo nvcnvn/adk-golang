@@ -155,7 +155,7 @@ func (c *IntegrationClient) GetOpenAPISpecForConnection(
 	// and an integration with name "ExecuteConnection" and trigger "api_trigger/ExecuteConnection"
 	// should be created as per the documentation.
 	integrationName := "ExecuteConnection"
-	
+
 	// Create connections client
 	connectionsClient := NewConnectionsClient(
 		c.project,
@@ -208,23 +208,23 @@ func (c *IntegrationClient) GetOpenAPISpecForConnection(
 			case "CREATE":
 				paths[path] = connectionsClient.CreateOperation(entityLower, toolName, toolInstructions)
 				componentsSchemas[fmt.Sprintf("create_%s_Request", entityLower)] = connectionsClient.CreateOperationRequest(entityLower)
-				
+
 			case "UPDATE":
 				paths[path] = connectionsClient.UpdateOperation(entityLower, toolName, toolInstructions)
 				componentsSchemas[fmt.Sprintf("update_%s_Request", entityLower)] = connectionsClient.UpdateOperationRequest(entityLower)
-				
+
 			case "DELETE":
 				paths[path] = connectionsClient.DeleteOperation(entityLower, toolName, toolInstructions)
 				componentsSchemas[fmt.Sprintf("delete_%s_Request", entityLower)] = connectionsClient.DeleteOperationRequest()
-				
+
 			case "LIST":
 				paths[path] = connectionsClient.ListOperation(entityLower, schemaAsString, toolName, toolInstructions)
 				componentsSchemas[fmt.Sprintf("list_%s_Request", entityLower)] = connectionsClient.ListOperationRequest()
-				
+
 			case "GET":
 				paths[path] = connectionsClient.GetOperation(entityLower, schemaAsString, toolName, toolInstructions)
 				componentsSchemas[fmt.Sprintf("get_%s_Request", entityLower)] = connectionsClient.GetOperationRequest()
-				
+
 			default:
 				return nil, fmt.Errorf("invalid operation: %s for entity: %s", operation, entity)
 			}

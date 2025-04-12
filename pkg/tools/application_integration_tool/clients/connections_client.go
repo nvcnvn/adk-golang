@@ -72,16 +72,16 @@ func (c *ConnectionsClient) GetConnectionDetails() (*ConnectionDetails, error) {
 	// Extract service name and host
 	serviceName, _ := connData["serviceDirectory"].(string)
 	host, _ := connData["host"].(string)
-	
+
 	// If host is not empty, use tlsServiceDirectory as serviceName
 	if host != "" {
 		if tlsServiceDirectory, ok := connData["tlsServiceDirectory"].(string); ok {
 			serviceName = tlsServiceDirectory
 		}
 	}
-	
+
 	authOverrideEnabled, _ := connData["authOverrideEnabled"].(bool)
-	
+
 	return &ConnectionDetails{
 		ServiceName:         serviceName,
 		Host:                host,
@@ -127,7 +127,7 @@ func (c *ConnectionsClient) GetEntitySchemaAndOperations(
 
 	// Extract schema and operations
 	schema, _ := responseData["jsonSchema"].(map[string]interface{})
-	
+
 	var operations []string
 	if opsRaw, ok := responseData["operations"].([]interface{}); ok {
 		operations = make([]string, 0, len(opsRaw))
@@ -878,7 +878,7 @@ func (c *ConnectionsClient) executeAPICall(url string) (*http.Response, error) {
 		_ = json.NewDecoder(resp.Body).Decode(&errorResp)
 
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
-			return nil, fmt.Errorf("invalid request. Please check the provided values of project(%s), location(%s), connection(%s). Status: %d", 
+			return nil, fmt.Errorf("invalid request. Please check the provided values of project(%s), location(%s), connection(%s). Status: %d",
 				c.project, c.location, c.connection, resp.StatusCode)
 		}
 
