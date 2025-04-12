@@ -107,6 +107,9 @@ type Part struct {
 
 	// AuthRequest represents an authentication request
 	AuthRequest *AuthRequest `json:"authRequest,omitempty"`
+
+	// Thought indicates if this part should be treated as a thought/reasoning step
+	Thought bool `json:"thought,omitempty"`
 }
 
 // FunctionCall represents a call to a function
