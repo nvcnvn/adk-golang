@@ -17,6 +17,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"sync"
 )
 
 // REQUEST_EUC_FUNCTION_CALL_NAME is the name of the function call for requesting end-user credentials
@@ -87,6 +88,7 @@ type FunctionCallsHandler func(ctx context.Context, invocation InvocationContext
 // AuthLLMRequestProcessor processes LLM requests with authentication
 type AuthLLMRequestProcessor struct {
 	HandleFunctionCalls FunctionCallsHandler
+	mu                  sync.Mutex // For thread safety
 }
 
 // NewAuthLLMRequestProcessor creates a new AuthLLMRequestProcessor
@@ -98,6 +100,9 @@ func NewAuthLLMRequestProcessor(handleFunctionCalls FunctionCallsHandler) *AuthL
 
 // ProcessAsync processes an LLM request asynchronously
 func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation InvocationContext, llmRequest LLMRequest) ([]Event, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	session := invocation.Session()
 	if session == nil {
 		return nil, fmt.Errorf("session is nil")
@@ -137,23 +142,20 @@ func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation I
 				continue
 			}
 
-			// Initialize auth handler with the config
-			// In a real implementation, we would properly deserialize the auth config
-			// For now, we just simulate that part
+			// Initialize auth config
 			var authConfig AuthConfig
-			if authConfigData != nil {
-				// Use authConfigData to populate authConfig in a real implementation
-				_ = authConfigData // Mark as used in future implementation
+			if err := convertToAuthConfig(authConfigData, &authConfig); err != nil {
+				return nil, err
 			}
 
+			// Initialize auth handler and store auth response
 			handler := NewAuthHandler(authConfig)
-			err := handler.ParseAndStoreAuthResponse(session)
-			if err != nil {
+			if err := handler.ParseAndStoreAuthResponse(session); err != nil {
 				return nil, err
 			}
 		}
 
-		// Found a user event, no need to look further
+		// Found a user event with responses, no need to look further
 		break
 	}
 
@@ -161,6 +163,12 @@ func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation I
 		return nil, nil
 	}
 
+	// Look for the system long-running request EUC function call and the original function calls
+	return p.processAuthRequests(ctx, invocation, events, requestEUCFunctionCallIDs)
+}
+
+// processAuthRequests processes auth requests by finding and handling the relevant function calls
+func (p *AuthLLMRequestProcessor) processAuthRequests(ctx context.Context, invocation InvocationContext, events []Event, requestEUCFunctionCallIDs map[string]struct{}) ([]Event, error) {
 	// Look for the system long-running request EUC function call
 	for i := len(events) - 2; i >= 0; i-- {
 		event := events[i]
@@ -177,12 +185,8 @@ func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation I
 			}
 
 			// Parse auth tool arguments
-			args, ok := functionCall.Args()["function_call_id"]
-			if !ok {
-				continue
-			}
-
-			functionCallID, ok := args.(string)
+			argsMap := functionCall.Args()
+			functionCallID, ok := argsMap["function_call_id"].(string)
 			if !ok {
 				continue
 			}
@@ -205,16 +209,13 @@ func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation I
 
 			// Get canonical tools from agent
 			agent := invocation.Agent()
-			canonicalTools := make(map[string]interface{})
+			canonicalTools := extractCanonicalTools(agent)
 
-			// In a real implementation, we would get the tools from the agent
-			// For now, we just simulate that part
-			_ = agent // Mark as used in future implementation
-
+			// Check each function call
 			for _, functionCall := range functionCalls {
 				if _, ok := toolsToResume[functionCall.ID()]; ok {
 					if p.HandleFunctionCalls != nil {
-						functionResponseEvent, err := p.HandleFunctionCalls(
+						responseEvent, err := p.HandleFunctionCalls(
 							ctx,
 							invocation,
 							event,
@@ -225,20 +226,96 @@ func (p *AuthLLMRequestProcessor) ProcessAsync(ctx context.Context, invocation I
 							return nil, err
 						}
 
-						if functionResponseEvent != nil {
-							return []Event{functionResponseEvent}, nil
+						if responseEvent != nil {
+							return []Event{responseEvent}, nil
 						}
 					}
 				}
 			}
 
+			// If we got here, we found the original event but couldn't process it
 			return nil, nil
 		}
 
+		// If we got here, we couldn't find the original event
 		return nil, nil
 	}
 
 	return nil, nil
+}
+
+// Helper function to extract canonical tools from an agent
+func extractCanonicalTools(agent interface{}) map[string]interface{} {
+	// In a real implementation, we would extract tools from the agent
+	// Here we just return an empty map for now
+	return make(map[string]interface{})
+}
+
+// Helper function to convert a map to an AuthConfig
+func convertToAuthConfig(data map[string]interface{}, config *AuthConfig) error {
+	// In a real implementation, we would properly deserialize the data to an AuthConfig
+	// For now, we just create a basic structure based on the data
+
+	// Process auth scheme
+	schemeData, ok := data["auth_scheme"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("auth_scheme not found or invalid")
+	}
+
+	var scheme AuthScheme
+	schemeTypeStr, ok := schemeData["type"].(string)
+	if !ok {
+		return fmt.Errorf("auth scheme type not found")
+	}
+
+	schemeType := AuthSchemeType(schemeTypeStr)
+
+	// Process based on scheme type
+	switch schemeType {
+	case OpenIDConnectScheme:
+		oidcScheme := &OpenIDConnectWithConfig{
+			Type: schemeType,
+		}
+		if endpoint, ok := schemeData["authorization_endpoint"].(string); ok {
+			oidcScheme.AuthorizationEndpoint = endpoint
+		}
+		if endpoint, ok := schemeData["token_endpoint"].(string); ok {
+			oidcScheme.TokenEndpoint = endpoint
+		}
+		scheme = oidcScheme
+	default:
+		securityScheme := &SecurityScheme{
+			Type: schemeType,
+		}
+		// Set other fields based on data if needed
+		scheme = securityScheme
+	}
+
+	// Process credentials
+	var rawCred, exchangedCred *AuthCredential
+
+	if rawCredData, ok := data["raw_auth_credential"].(map[string]interface{}); ok {
+		rawCred = &AuthCredential{}
+		if authTypeStr, ok := rawCredData["auth_type"].(string); ok {
+			rawCred.AuthType = AuthCredentialType(authTypeStr)
+		}
+		// Process other credential fields as needed
+	}
+
+	if exchangedCredData, ok := data["exchanged_auth_credential"].(map[string]interface{}); ok {
+		exchangedCred = &AuthCredential{}
+		if authTypeStr, ok := exchangedCredData["auth_type"].(string); ok {
+			exchangedCred.AuthType = AuthCredentialType(authTypeStr)
+		}
+		// Process other credential fields as needed
+	}
+
+	// Set the config fields
+	config.AuthScheme = scheme
+	config.RawAuthCredential = rawCred
+	config.ExchangedAuthCredential = exchangedCred
+
+	return nil
 }
 
 // Default request processor instance
