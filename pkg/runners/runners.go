@@ -17,13 +17,33 @@ package runners
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/nvcnvn/adk-golang/pkg/agents"
 	"github.com/nvcnvn/adk-golang/pkg/telemetry"
 )
+
+// Interaction represents a single interaction between a user and an agent.
+type Interaction struct {
+	Input     string    `json:"input"`
+	Response  string    `json:"response"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// Session represents an interactive session with an agent.
+type Session struct {
+	AgentName    string        `json:"agent_name"`
+	AgentModel   string        `json:"agent_model"`
+	StartTime    time.Time     `json:"start_time"`
+	EndTime      time.Time     `json:"end_time,omitempty"`
+	Interactions []Interaction `json:"interactions"`
+}
 
 // Runner is an interface for running agents.
 type Runner interface {
@@ -32,14 +52,31 @@ type Runner interface {
 
 	// RunInteractive runs the agent in an interactive mode, reading from in and writing to out.
 	RunInteractive(ctx context.Context, agent *agents.Agent, in io.Reader, out io.Writer) error
+
+	// SetSaveSessionEnabled enables or disables session saving.
+	SetSaveSessionEnabled(enabled bool)
 }
 
 // SimpleRunner is a basic implementation of Runner.
-type SimpleRunner struct{}
+type SimpleRunner struct {
+	saveSession bool
+	session     Session
+}
 
 // NewSimpleRunner creates a new SimpleRunner.
 func NewSimpleRunner() *SimpleRunner {
-	return &SimpleRunner{}
+	return &SimpleRunner{
+		saveSession: false,
+		session: Session{
+			StartTime:    time.Now(),
+			Interactions: []Interaction{},
+		},
+	}
+}
+
+// SetSaveSessionEnabled enables or disables session saving.
+func (r *SimpleRunner) SetSaveSessionEnabled(enabled bool) {
+	r.saveSession = enabled
 }
 
 // Run runs the agent with the given input and produces output.
@@ -63,6 +100,11 @@ func (r *SimpleRunner) Run(ctx context.Context, agent *agents.Agent, input strin
 		return "", err
 	}
 
+	// Track the interaction if session saving is enabled
+	if r.saveSession {
+		r.trackInteraction(input, response)
+	}
+
 	return response, nil
 }
 
@@ -80,6 +122,13 @@ func (r *SimpleRunner) RunInteractive(ctx context.Context, agent *agents.Agent, 
 	span.SetAttribute("agent.name", agent.Name())
 	span.SetAttribute("agent.model", agent.Model())
 
+	// Initialize session data if saving is enabled
+	if r.saveSession {
+		r.session.AgentName = agent.Name()
+		r.session.AgentModel = agent.Model()
+		r.session.StartTime = time.Now()
+	}
+
 	// Print welcome message
 	fmt.Fprintf(out, "Starting interactive session with %s agent\n", agent.Name())
 	fmt.Fprintf(out, "Type 'exit' or 'quit' to end the session\n\n")
@@ -95,7 +144,7 @@ func (r *SimpleRunner) RunInteractive(ctx context.Context, agent *agents.Agent, 
 		n, err := in.Read(buf)
 		if err != nil {
 			if err == io.EOF {
-				return nil
+				break
 			}
 			span.SetAttribute("error", err.Error())
 			return err
@@ -107,7 +156,7 @@ func (r *SimpleRunner) RunInteractive(ctx context.Context, agent *agents.Agent, 
 
 		// Check for exit command
 		if input == "exit" || input == "quit" {
-			return nil
+			break
 		}
 
 		// Create a span for this interaction
@@ -129,5 +178,53 @@ func (r *SimpleRunner) RunInteractive(ctx context.Context, agent *agents.Agent, 
 
 		// Write the response
 		fmt.Fprintf(out, "%s\n", response)
+
+		// Track the interaction if session saving is enabled
+		if r.saveSession {
+			r.trackInteraction(input, response)
+		}
 	}
+
+	// Save the session if enabled
+	if r.saveSession {
+		r.session.EndTime = time.Now()
+		if err := r.saveSessionToFile(agent.Name()); err != nil {
+			fmt.Fprintf(out, "Failed to save session: %v\n", err)
+		} else {
+			fmt.Fprintf(out, "Session saved to file\n")
+		}
+	}
+
+	return nil
+}
+
+// trackInteraction adds an interaction to the current session.
+func (r *SimpleRunner) trackInteraction(input, response string) {
+	r.session.Interactions = append(r.session.Interactions, Interaction{
+		Input:     input,
+		Response:  response,
+		Timestamp: time.Now(),
+	})
+}
+
+// saveSessionToFile saves the current session to a JSON file.
+func (r *SimpleRunner) saveSessionToFile(agentName string) error {
+	// Create sessions directory if it doesn't exist
+	sessionsDir := filepath.Join(".", "sessions")
+	if err := os.MkdirAll(sessionsDir, 0755); err != nil {
+		return err
+	}
+
+	// Create a filename based on agent name and timestamp
+	timestamp := time.Now().Format("20060102_150405")
+	filename := filepath.Join(sessionsDir, fmt.Sprintf("%s_session_%s.json", agentName, timestamp))
+
+	// Marshal session data to JSON
+	data, err := json.MarshalIndent(r.session, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// Write the JSON data to file
+	return os.WriteFile(filename, data, 0644)
 }
