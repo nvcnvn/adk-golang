@@ -224,6 +224,12 @@ func NewAgent(options ...Option) *Agent {
 		option(config)
 	}
 
+	// Validate agent name
+	if err := ValidateAgentName(config.Name); err != nil {
+		telemetry.Logger.Printf("Warning: %v", err)
+		// In Go, we'll warn but not fail (different from Python's strict approach)
+	}
+
 	agent := &Agent{
 		name:                config.Name,
 		model:               config.Model,
@@ -237,10 +243,9 @@ func NewAgent(options ...Option) *Agent {
 
 	// Set parent agent for sub-agents
 	for _, subAgent := range agent.subAgents {
-		if subAgent.parentAgent != nil {
-			// Log warning but continue - in Go we'll allow multiple parents unlike Python
-			telemetry.Logger.Printf("Warning: Agent %s already has a parent: %s",
-				subAgent.name, subAgent.parentAgent.name)
+		// Validate sub-agent hierarchy
+		if err := ValidateAgentHierarchy(subAgent, agent); err != nil {
+			telemetry.Logger.Printf("Warning: %v", err)
 		}
 		subAgent.parentAgent = agent
 	}
@@ -319,7 +324,7 @@ func (a *Agent) Process(ctx context.Context, message string) (string, error) {
 }
 
 // RootAgent returns the root agent in the hierarchy
-func (a *Agent) RootAgent() *Agent {
+func (a *Agent) RootAgent() BaseAgent {
 	root := a
 	for root.parentAgent != nil {
 		root = root.parentAgent
@@ -328,7 +333,7 @@ func (a *Agent) RootAgent() *Agent {
 }
 
 // FindAgent searches for an agent by name in the agent tree
-func (a *Agent) FindAgent(name string) *Agent {
+func (a *Agent) FindAgent(name string) BaseAgent {
 	// Check if this is the agent we're looking for
 	if a.name == name {
 		return a
@@ -339,7 +344,7 @@ func (a *Agent) FindAgent(name string) *Agent {
 }
 
 // FindSubAgent searches for an agent by name in sub-agents
-func (a *Agent) FindSubAgent(name string) *Agent {
+func (a *Agent) FindSubAgent(name string) BaseAgent {
 	for _, subAgent := range a.subAgents {
 		if found := subAgent.FindAgent(name); found != nil {
 			return found
@@ -399,6 +404,68 @@ func (a *Agent) SubAgents() []*Agent {
 // ParentAgent returns the parent agent of this agent.
 func (a *Agent) ParentAgent() *Agent {
 	return a.parentAgent
+}
+
+// Run executes the agent with the given invocation context
+func (a *Agent) Run(ctx context.Context, invocationContext *InvocationContext) (<-chan *events.Event, error) {
+	eventCh := make(chan *events.Event)
+
+	// Create a span for tracking this processing
+	ctx, span := telemetry.StartSpan(ctx, "Agent.Run")
+	defer span.End()
+
+	span.SetAttribute("agent.name", a.name)
+	span.SetAttribute("agent.model", a.model)
+
+	// Start a goroutine to handle events
+	go func() {
+		defer close(eventCh)
+
+		if invocationContext.InvocationEvent != nil && invocationContext.InvocationEvent.Content != nil {
+			// Get user message from event if available
+			userMsg := ""
+			for _, part := range invocationContext.InvocationEvent.Content.Parts {
+				if part != nil && part.Text != "" {
+					userMsg += part.Text
+				}
+			}
+
+			// Process the user message
+			response, err := a.Process(ctx, userMsg)
+			if err != nil {
+				// Send error event
+				eventCh <- &events.Event{
+					InvocationID: invocationContext.InvocationID,
+					Author:       a.name,
+					Content: &events.Content{
+						Parts: []*models.Part{
+							{Text: fmt.Sprintf("Error processing message: %v", err)},
+						},
+					},
+				}
+				return
+			}
+
+			// Send response event
+			eventCh <- &events.Event{
+				InvocationID: invocationContext.InvocationID,
+				Author:       a.name,
+				Content: &events.Content{
+					Parts: []*models.Part{
+						{Text: response},
+					},
+				},
+			}
+		}
+	}()
+
+	return eventCh, nil
+}
+
+// RunLive executes the agent in live mode with the given invocation context
+func (a *Agent) RunLive(ctx context.Context, invocationContext *InvocationContext) (<-chan *events.Event, error) {
+	// For now, implement live mode same as regular mode
+	return a.Run(ctx, invocationContext)
 }
 
 // Agent registry to keep track of exported agents
